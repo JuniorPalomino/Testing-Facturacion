@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Factura - {{ factura.numero_factura }}</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Factura</h1>
+      <p><strong>Número de Factura:</strong> {{ factura.numero_factura }}</p>
+      <p><strong>Fecha de Factura:</strong> {{ factura.fecha_factura }}</p>
+      <p><strong>RUC del Cliente:</strong> {{ factura.ruc_cliente }}</p>
+      <p><strong>Código del Vendedor:</strong> {{ factura.cod_vendedor }}</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Precio Unitario</th>
+            <th>Cantidad</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for producto in factura.detalles %}
+          <tr>
+            <td>{{ producto.nombre }}</td>
+            <td>{{ producto.precio }}</td>
+            <td>{{ producto.cantidad }}</td>
+            <td>{{ producto.subtotal }}</td>
+          </tr>
+          {% endfor %}
+
+          <tr>
+            <td colspan="3"><strong>Total:</strong></td>
+            <td>{{ factura.total_factura }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

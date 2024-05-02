@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Facturas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Lista de Facturas</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Número de Factura</th>
+                    <th>Fecha de Factura</th>
+                    <th>RUC del Cliente</th>
+                    <th>Código del Vendedor</th>
+                    <th>Total Factura</th>
+                    <th>Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for factura in facturas %}
+                <tr>
+                    <td>{{ factura.numero_factura }}</td>
+                    <td>{{ factura.fecha_factura }}</td>
+                    <td>{{ factura.ruc_cliente }}</td>
+                    <td>{{ factura.cod_vendedor }}</td>
+                    <td>{{ factura.total_factura }}</td>
+                    <td><a href="{{ url_for('factura', numero_factura=factura.numero_factura) }}">Ver Detalles</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('index') }}">Volver al inicio</a>
+    </div>
+</body>
+</html>
