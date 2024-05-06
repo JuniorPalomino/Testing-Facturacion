@@ -26,10 +26,11 @@
     <form action="{{ url_for('nuevo_comprobante') }}" method="post">
         <div class="mb-3">
             <label for="cliente" class="form-label">Cliente</label>
+            <!-- Parte del código para seleccionar clientes -->
             <select class="form-select" id="cliente" name="cliente" onchange="updateRUC(this.value)">
                 <option selected>Seleccione un Cliente</option>
                 {% for cliente in clientes %}
-                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                <option value="{{ cliente.id }}">{{ cliente.NOMBRE }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -39,8 +40,9 @@
         </div>
         <div class="mb-3">
             <label for="serie" class="form-label">Código del Comprobante</label>
-            <input type="text" class="form-control" id="serie" name="serie" required>
+            <input type="text" class="form-control" id="serie" name="serie" value="{{ siguiente_numero }}" readonly>
         </div>
+        
         <div class="mb-3">
             <label for="fecha_emision" class="form-label">Fecha de Emisión</label>
             <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" required>
@@ -72,19 +74,38 @@
 </div>
 
 <script>
+
 let itemIndex = 0;
+
+function fetchProductDetails(inputElement, index) {
+    const datalist = document.getElementById(`descriptions-${index}`);
+    const option = datalist.querySelector(`option[value="${inputElement.value}"]`);
+    const productId = option.getAttribute('data-product-id');
+
+    fetch(`/get_producto/${productId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.querySelector(`input[name='items[${index}][precio_unitario]']`).value = data.precio;
+            calculateTotal(index);
+        })
+        .catch(error => {
+            console.error('Error al recuperar el precio:', error);
+            document.querySelector(`input[name='items[${index}][precio_unitario]']`).value = "0";  // En caso de error, poner precio en 0
+        });
+}
+
+
 function agregarItem() {
     const itemsContainer = document.getElementById('items');
     const newItem = document.createElement('div');
     newItem.classList.add('input-group');
     newItem.innerHTML = `
         <input type="number" name="items[${itemIndex}][cantidad]" class="form-control" placeholder="Cantidad" onchange="calculateTotal(${itemIndex})" required>
-        <input list="descriptions" name="items[${itemIndex}][descripcion]" class="form-control" placeholder="Descripción" onchange="fetchProductDetails(this.value, ${itemIndex})" required>
-        <datalist id="descriptions">
-            <!-- Lista de productos desde la base de datos -->
-            <option value="Producto 1">
-            <option value="Producto 2">
-            <option value="Producto 3">
+        <input list="descriptions-${itemIndex}" name="items[${itemIndex}][descripcion]" class="form-control" placeholder="Descripción" onchange="fetchProductDetails(this, ${itemIndex})" required>
+        <datalist id="descriptions-${itemIndex}">
+            {% for producto in productos %}
+            <option data-product-id="{{ producto.id }}" value="{{ producto.descripcion }}"></option>
+            {% endfor %}
         </datalist>
         <input type="text" name="items[${itemIndex}][precio_unitario]" class="form-control" placeholder="P. Unit." readonly>
         <input type="text" name="items[${itemIndex}][total]" class="form-control" placeholder="Total" readonly>
@@ -94,16 +115,10 @@ function agregarItem() {
     itemIndex++;
 }
 
+
 function removeItem(button) {
     button.parentElement.remove();
     updateTotals();
-}
-
-function fetchProductDetails(productName, index) {
-    // Llamar a la base de datos para obtener los detalles del producto
-    // Aquí se debe reemplazar con una llamada real a la base de datos
-    document.querySelector(`input[name='items[${index}][precio_unitario]']`).value = 10; // Precio ficticio
-    calculateTotal(index);
 }
 
 function calculateTotal(index) {
@@ -128,7 +143,7 @@ function updateTotals() {
 
 function updateRUC(clienteId) {
     // Actualizar el RUC basado en la selección del cliente
-    document.getElementById('ruc').value = 'RUC del cliente ' + clienteId; // Simulación, reemplazar con datos reales
+    document.getElementById('ruc').value = clienteId; // Simulación, reemplazar con datos reales
 }
 </script>
 
