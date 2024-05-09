@@ -7,6 +7,15 @@
 </head>
 <body>
     <div class="container">
+        <h1>Crear cliente:</h1>
+        <form action="{{ url_for('agregar_cliente') }}" method="post">
+            <label for="razon_social">Razon Social:</label>
+            <input type="text" name="razon_social" id="razon_social" required>
+            <label for="ruc">RUC:</label>
+            <input type="numbre" name="ruc" id="ruc" min="0" step="1" required>
+            <button type="submit">Crear Cliente</button>
+        </form>
+        <hr>
         <h1>Ingrese los productos:</h1>
         <form action="{{ url_for('agregar_producto') }}" method="post">
             <label for="nombre_producto">Nombre del Producto:</label>

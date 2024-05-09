@@ -18,12 +18,25 @@ class Factura:
         self.detalles = detalles
         self.total_factura = total_factura
 
+class Clientes:
+    def __init__(self, razon_social, ruc):
+        self.razon_social = rzon_social
+        self.ruc = ruc
+        
 productos = []
 facturas = []
+clientes = []
 
 @app.route('/')
 def index():
     return render_template('index.html', productos=productos)
+
+@app.route('/agregar_cliente', methods=['POST'])
+def agregar_producto():
+    razon_social = request.form['razon_social']
+    ruc = int(request.form['ruc'])
+    clientes.append(Clientes(razon_social, ruc))
+    return redirect(url_for('index'))
 
 @app.route('/agregar_producto', methods=['POST'])
 def agregar_producto():
