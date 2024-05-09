@@ -2,6 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
 
+class Clientes:
+    def __init__(self, razon_social, ruc):
+        self.razon_social = rzon_social
+        self.ruc = ruc
+
 class Producto:
     def __init__(self, nombre, precio, cantidad):
         self.nombre = nombre
@@ -18,10 +23,6 @@ class Factura:
         self.detalles = detalles
         self.total_factura = total_factura
 
-class Clientes:
-    def __init__(self, razon_social, ruc):
-        self.razon_social = rzon_social
-        self.ruc = ruc
         
 productos = []
 facturas = []
@@ -32,7 +33,7 @@ def index():
     return render_template('index.html', productos=productos)
 
 @app.route('/agregar_cliente', methods=['POST'])
-def agregar_producto():
+def agregar_cliente():
     razon_social = request.form['razon_social']
     ruc = int(request.form['ruc'])
     clientes.append(Clientes(razon_social, ruc))
