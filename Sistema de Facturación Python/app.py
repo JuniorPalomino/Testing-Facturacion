@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, flash, render_template, request, redirect, url_for, send_file
 from mysql.connector import connect, Error
 from mysql.connector.cursor import MySQLCursorDict
 import mysql.connector
@@ -17,6 +17,8 @@ MYSQL_PORT = 47723
 MYSQL_USER = "root"
 MYSQL_PASSWORD = "tuDTbAoAjOIBSzzcOKScThPiHeUkKvaB"
 MYSQL_DATABASE = "railway"
+codigo_vendedor_global = None
+
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
@@ -30,8 +32,31 @@ def get_db_connection():
     except Exception as e:
         print("Error al conectarse a MySQL:", e)
         return None
+    
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute('SELECT * FROM USUARIO WHERE NOMBRE_USUARIO = %s AND CONTRASENA = %s', (username, password))
+    user = cursor.fetchone()
+    cursor.close()
+    connection.close()
 
-@app.route('/')
+    if user:
+        global codigo_vendedor_global  # Acceder a la variable global
+        codigo_vendedor_global = user['COD_VENDEDOR']
+        return redirect(url_for('index'))
+    else:
+        flash('Código de Vendedor o contraseña incorrectos', 'error')
+        return redirect(url_for('login'))
+    
+@app.route('/', methods=['GET'])
+def home():
+    return render_template('login.html')  # Asegúrate de que 'login.html' exista
+
+@app.route('/index', methods=['GET'])
 def index():
     connection = get_db_connection()
     if connection is not None:
@@ -47,11 +72,11 @@ def index():
         facturas = cursor.fetchall()
         cursor.close()
         connection.close()
-        return render_template('index.html', data=facturas)
+        return render_template('principal.html', data=facturas)
     else:
         return "Error al conectar con la base de datos"
-
 def manejar_get_nuevo_comprobante(connection):
+    
     if connection is not None:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT MAX(NUMERO_FACTURA) as ultimo_numero FROM CABECERA_FACTURA")
@@ -74,6 +99,106 @@ def manejar_get_nuevo_comprobante(connection):
 #este no funca ##
 @app.route('/nuevo_comprobante', methods=['GET', 'POST'])
 def nuevo_comprobante():
+    # Obtener el código de vendedor del parámetro de la URL
+    global codigo_vendedor_global
+
+    connection = get_db_connection()
+    if connection is None:
+        return "Error de conexión a la base de datos", 500
+
+    if request.method == 'POST':
+        cursor = None
+        try:
+            cursor = connection.cursor()
+            ruc_cliente = request.form.get('cliente')
+            fecha_emision = request.form.get('fecha_emision')
+            total_afecto = request.form.get('totalAfecto')
+            total_igv = request.form.get('totalIGV')
+            total_general = request.form.get('totalGeneral')
+
+            cursor.execute(
+                "INSERT INTO CABECERA_FACTURA (FECHA_FACTURA, RUC_CLIENTE, CODIGO_VENDEDOR) VALUES (%s, %s, %s)",
+                (fecha_emision, ruc_cliente, codigo_vendedor_global)  # Usar el código de vendedor obtenido del parámetro de la URL
+            )
+            factura_id = cursor.lastrowid
+            
+            # Obtener los datos de los items del formulario
+            datos_items = request.form.get('datos_items')
+            if datos_items:
+                datos_items = json.loads(datos_items)
+                for item_data in datos_items:
+                    cantidad = item_data.get('cantidad')
+                    codigo_item = item_data.get('codigo_item')
+                    precio_unitario = item_data.get('precio_unitario')
+                    
+                    cursor.execute(
+                        "INSERT INTO CUERPO_FACTURA (NUMERO_FACTURA, CODIGO_ITEM, CANTIDAD, PRECIO_VENTA) VALUES (%s, %s, %s, %s)",
+                        (factura_id, codigo_item, cantidad, precio_unitario)
+                    )
+
+            cursor.execute(
+                "UPDATE CABECERA_FACTURA SET SUBTOTAL = %s, IGV = %s, TOTAL = %s WHERE NUMERO_FACTURA = %s",
+                (total_afecto, total_igv, total_general, factura_id)
+            )
+
+            connection.commit()
+            return redirect(url_for('index'))
+        except Exception as e:
+            if connection:
+                connection.rollback()
+            print("Error al procesar el formulario:", e)
+            return render_template('nuevo_comprobante.html', mensaje_error="Error al procesar el formulario: " + str(e))
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+    else:
+        return manejar_get_nuevo_comprobante(connection)
+# @app.route('/')
+# def index():
+#     connection = get_db_connection()
+#     if connection is not None:
+#         cursor = connection.cursor(dictionary=True)
+#         query = """
+#         SELECT FECHA_FACTURA as fecha_emision, 'Factura' as tipo, NUMERO_FACTURA as serie_numero, 
+#                C.NOMBRE as receptor, TOTAL
+#         FROM CABECERA_FACTURA CF
+#         JOIN CLIENTE C ON CF.RUC_CLIENTE = C.RUC_CLIENTE
+#         ORDER BY FECHA_FACTURA DESC;
+#         """
+#         cursor.execute(query)
+#         facturas = cursor.fetchall()
+#         cursor.close()
+#         connection.close()
+#         return render_template('index.html', data=facturas)
+#     else:
+#         return "Error al conectar con la base de datos"
+
+# def manejar_get_nuevo_comprobante(connection):
+#     if connection is not None:
+#         cursor = connection.cursor(dictionary=True)
+#         cursor.execute("SELECT MAX(NUMERO_FACTURA) as ultimo_numero FROM CABECERA_FACTURA")
+#         resultado = cursor.fetchone()
+#         ultimo_numero = resultado['ultimo_numero'] if resultado['ultimo_numero'] is not None else 0
+#         siguiente_numero = ultimo_numero + 1
+
+#         cursor.execute("SELECT RUC_CLIENTE as id, NOMBRE FROM CLIENTE")
+#         clientes = cursor.fetchall()
+#         cursor.execute("SELECT CODIGO_ITEM as id, DESC_ITEM as descripcion FROM ARTICULOS")
+#         productos = cursor.fetchall()
+
+#         cursor.close()
+#         connection.close()
+
+#         return render_template('nuevo_comprobante.html', clientes=clientes, productos=productos, siguiente_numero=siguiente_numero)
+#     else:
+#         return "Error al conectar con la base de datos", 500
+    
+#este no funca ##
+""" @app.route('/nuevo_comprobante', methods=['GET', 'POST'])
+def nuevo_comprobante():
+    global codigo_vendedor_global
     connection = get_db_connection()
     if connection is None:
         return "Error de conexión a la base de datos", 500
@@ -126,7 +251,7 @@ def nuevo_comprobante():
             if connection:
                 connection.close()
     else:
-        return manejar_get_nuevo_comprobante(connection)
+        return manejar_get_nuevo_comprobante(connection) """
 
 @app.route('/guardar_items', methods=['POST'])
 def guardar_items():
@@ -315,6 +440,30 @@ def factura_pdf(num_factura):
             connection.close()
     else:
         return "Error al conectar con la base de datos", 500
+    
+@app.route('/nuevo_cliente', methods=['GET', 'POST'])
+def nuevo_cliente():
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        apellidos = request.form['apellidos']
+        ruc = request.form['ruc']
+        nombre_completo = f"{nombre} {apellidos}"
+
+        connection = get_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("INSERT INTO CLIENTE (NOMBRE, RUC_CLIENTE) VALUES (%s, %s)", (nombre_completo, ruc))
+                connection.commit()
+                cursor.close()
+                connection.close()
+                return redirect(url_for('index'))  # Redirecciona a la página principal
+            except Exception as e:
+                print("Error al insertar cliente en la base de datos:", e)
+                return "Error al insertar cliente en la base de datos", 500
+        else:
+            return "Error de conexión a la base de datos", 500
+    return render_template('nuevo_cliente.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

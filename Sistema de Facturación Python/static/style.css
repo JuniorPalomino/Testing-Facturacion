@@ -74,11 +74,12 @@ button:hover {
     display: flex;
     align-items: center;
 }
+
 .form-label i {
     margin-right: 5px;
 }
+
 .btn .material-icons {
     vertical-align: middle;
     margin-right: 5px;
 }
-
