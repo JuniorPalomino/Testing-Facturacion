@@ -20,17 +20,17 @@
                 padding: 8px;
                 font-size: 16px;
             }
-                /* Estilos para el modal */
+                
             .modal {
-                display: none; /* Por defecto, el modal estará oculto */
+                display: none;
                 position: fixed;
-                z-index: 1;
+                z-index: 10000; 
                 left: 0;
                 top: 0;
                 width: 100%;
                 height: 100%;
                 overflow: auto;
-                background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro */
+                background-color: rgba(0, 0, 0, 0.4);
             }
 
             .modal-content {
@@ -181,41 +181,61 @@ function fetchProductDetails(productId, index) {
     fetch(`/get_producto/${productId}`)
         .then(response => response.json())
         .then(data => {
-            // Asegurarse de que el campo de precio unitario se actualiza correctamente
             document.querySelector(`input[name='items[${index}][precio_unitario]']`).value = data.precio;
             calculateTotal(index);
         })
         .catch(error => {
             console.error('Error al recuperar el precio:', error);
-            // En caso de error, poner precio en 0
             document.querySelector(`input[name='items[${index}][precio_unitario]']`).value = "0";
+            calculateTotal(index);
         });
 }
-
 
 function agregarItem() {
     const itemsContainer = document.getElementById('items');
     const newItem = document.createElement('div');
     newItem.classList.add('input-group');
 
-    // Generar un ID único para cada descripción de datalist
-    const descriptionId = `descriptions-${itemIndex}`;
-
     newItem.innerHTML = `
-        <input type="number" name="items[${itemIndex}][cantidad]" class="form-control" placeholder="Cantidad" min="1"onchange="calculateTotal(${itemIndex})" required>
-        <input list="${descriptionId}" name="items[${itemIndex}][descripcion]" class="form-control" placeholder="Descripción" onchange="updateProductDetails(this, ${itemIndex})" required>
-        <datalist id="${descriptionId}">
+        <input type="number" name="items[${itemIndex}][cantidad]" class="form-control" placeholder="Cantidad" min="1" onchange="calculateTotal(${itemIndex}); verificarDuplicados();" oninput="validarCantidad(this);" required>
+        <select name="items[${itemIndex}][descripcion]" class="form-control" onchange="updateProductDetails(this, ${itemIndex}); verificarDuplicados();" required>
+            <option value="">Seleccione una descripción</option>
             {% for producto in productos %}
-            <option data-product-id="{{ producto.id }}" value="{{ producto.descripcion }}"></option>
+                <option data-product-id="{{ producto.id }}" value="{{ producto.descripcion }}">{{ producto.descripcion }}</option>
             {% endfor %}
-        </datalist>
+        </select>
         <input type="hidden" name="items[${itemIndex}][codigo_item]" class="form-control" required>
         <input type="text" name="items[${itemIndex}][precio_unitario]" class="form-control" placeholder="P. Unit." readonly>
         <input type="text" name="items[${itemIndex}][total]" class="form-control" placeholder="Total" readonly>
-        <button class="btn btn-danger" type="button" onclick="removeItem(this)">Eliminar</button>
+        <button class="btn btn-danger" type="button" onclick="removeItem(this); verificarDuplicados();">Eliminar</button>
     `;
     itemsContainer.appendChild(newItem);
     itemIndex++;
+}
+function verificarDuplicados() {
+    const items = document.querySelectorAll('select[name*="[descripcion]"]');
+    const descripciones = new Set();
+    let duplicado = false;
+
+    items.forEach(item => {
+        if (descripciones.has(item.value)) {
+            duplicado = true;
+        }
+        descripciones.add(item.value);
+    });
+
+    document.querySelector('button[type="submit"]').disabled = duplicado;
+    if (duplicado) {
+        mostrarError('Existen artículos duplicados. Por favor, elimine o cambie los artículos duplicados para continuar.');
+    } else {
+        modal.style.display = "none"; 
+    }
+}
+function validarCantidad(input) {
+    if (input.value < 1) {
+        input.value = 1;
+    }
+    calculateTotal(parseInt(input.name.match(/\d+/)[0]));
 }
 // Función para obtener todos los datos de los elementos dentro del contenedor "items"
 function obtenerDatosItems() {
@@ -226,7 +246,7 @@ function obtenerDatosItems() {
 
     items.forEach(item => {
         const cantidad = item.querySelector('input[name^="items["][name$="[cantidad]"]').value;
-        const descripcion = item.querySelector('input[name^="items["][name$="[descripcion]"]').value;
+        const descripcion = item.querySelector('select[name^="items["][name$="[descripcion]"]').value;  // Cambiado de input a select
         const codigoItem = item.querySelector('input[name^="items["][name$="[codigo_item]"]').value;
         const precioUnitario = item.querySelector('input[name^="items["][name$="[precio_unitario]"]').value;
         const total = item.querySelector('input[name^="items["][name$="[total]"]').value;
@@ -245,28 +265,12 @@ function obtenerDatosItems() {
     return datosItems;
 }
 
+
 // Función para manejar el envío del formulario
 function enviarFormulario() {
     // Obtener los datos de los elementos dentro del contenedor "items"
     const datosItems = obtenerDatosItems();
 
-    // Aquí puedes enviar los datos al servidor mediante AJAX o cualquier otra forma
-    // Por ejemplo:
-    // fetch('/guardar_items', {
-    //     method: 'POST',
-    //     headers: {
-    //         'Content-Type': 'application/json'
-    //     },
-    //     body: JSON.stringify(datosItems)
-    // })
-    // .then(response => {
-    //     // Manejar la respuesta del servidor
-    // })
-    // .catch(error => {
-    //     console.error('Error al enviar los datos:', error);
-    // });
-
-    // O puedes agregar los datos al formulario antes de enviarlo
     const formulario = document.querySelector('form');
     const datosItemsInput = document.createElement('input');
     datosItemsInput.type = 'hidden';
@@ -279,20 +283,12 @@ function enviarFormulario() {
 }
 
 
-function updateProductDetails(inputElement, index) {
-    const datalist = document.getElementById(inputElement.getAttribute('list'));
-    const option = datalist.querySelector(`option[value="${inputElement.value}"]`);
-    const productId = option.getAttribute('data-product-id');
-
-    // Actualizar el campo oculto con el ID del producto seleccionado
+function updateProductDetails(select, index) {
+    const productId = select.options[select.selectedIndex].getAttribute('data-product-id');
     const codigoItemInput = document.querySelector(`input[name='items[${index}][codigo_item]']`);
     codigoItemInput.value = productId;
-
-    // Actualizar el precio del producto utilizando una función que deberías tener similar a `fetchProductDetails`
     fetchProductDetails(productId, index);
 }
-
-
 
 function removeItem(button) {
     button.parentElement.remove();
@@ -307,17 +303,6 @@ function calculateTotal(index) {
     updateTotals();
 }
 
-/* function updateTotals() {
-    let totalAfecto = 0;
-    document.querySelectorAll(`input[name*='[total]']`).forEach(input => {
-        totalAfecto += parseFloat(input.value);
-    });
-    const igv = totalAfecto * 18/118;
-    const totalGeneral = totalAfecto - igv;
-    document.getElementById('totalAfecto').textContent = totalGeneral.toFixed(2);
-    document.getElementById('totalIGV').textContent = igv.toFixed(2);
-    document.getElementById('totalGeneral').textContent = totalAfecto.toFixed(2);
-} */
 function updateTotals() {
     let totalAfecto = 0;
     document.querySelectorAll(`input[name*='[total]']`).forEach(input => {
