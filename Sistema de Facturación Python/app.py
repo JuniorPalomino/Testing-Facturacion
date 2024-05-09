@@ -72,6 +72,9 @@ def manejar_get_nuevo_comprobante(connection):
         return "Error al conectar con la base de datos", 500
     
 #este no funca ##
+# Este import te permitirá acceder a la función redirect y url_for
+from flask import redirect, url_for
+
 @app.route('/nuevo_comprobante', methods=['GET', 'POST'])
 def nuevo_comprobante():
     connection = get_db_connection()
@@ -132,8 +135,15 @@ def nuevo_comprobante():
             if connection:
                 connection.close()
     else:
-        # Aquí manejas la solicitud GET, posiblemente mostrando un formulario
-        return render_template('nuevo_comprobante.html')  # Asumiendo que tienes un template así
+        # Si es una solicitud GET, obtén los clientes de la base de datos
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT RUC_CLIENTE as id, NOMBRE FROM CLIENTE")
+        clientes = cursor.fetchall()
+        cursor.close()
+
+        # Renderiza el template y pasa la lista de clientes
+        return render_template('nuevo_comprobante.html', clientes=clientes)
+
 
 """ @app.route('/nuevo_comprobante', methods=['GET', 'POST'])
 def nuevo_comprobante():
@@ -284,6 +294,27 @@ def factura_pdf(num_factura):
             connection.close()
     else:
         return "Error al conectar con la base de datos", 500
+    
+@app.route('/nuevo_cliente', methods=['GET', 'POST'])
+def nuevo_cliente():
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        ruc = request.form['ruc']
+        connection = get_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("INSERT INTO CLIENTE (NOMBRE, RUC_CLIENTE) VALUES (%s, %s)", (nombre, ruc))
+                connection.commit()
+                cursor.close()
+                connection.close()
+                return redirect(url_for('index'))  # Redirecciona a la página principal
+            except Exception as e:
+                print("Error al insertar cliente en la base de datos:", e)
+                return "Error al insertar cliente en la base de datos", 500
+        else:
+            return "Error de conexión a la base de datos", 500
+    return render_template('nuevo_cliente.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
