@@ -12,13 +12,7 @@
 <body data-error="{{ error }}">
 <div class="container mt-4">
     <h1>Crear Cliente</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    
 
     <div class="mb-3">
         <a href="/logout" class="btn btn-danger mb-3">
@@ -59,7 +53,20 @@
 </div>
 
 <script>
-    
+    document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    swal({
+                        title: "{{ category }}",
+                        text: "{{ message }}",
+                        icon: "{{ category }}",
+                        button: "OK",
+                    });
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+        });
     // Función para validar el RUC en tiempo real
     function validarRUC(input) {
         var ruc = input.value;

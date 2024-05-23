@@ -354,7 +354,6 @@ def factura_pdf(num_factura):
 @app.route('/nuevo_cliente', methods=['GET', 'POST'])
 @login_required
 def nuevo_cliente():
-    error_message = None
     if request.method == 'POST':
         nombre = request.form['nombre']
         apellidos = request.form['apellidos']
@@ -363,31 +362,24 @@ def nuevo_cliente():
 
         connection = get_db_connection()
         if connection is not None:
-            try:
-                cursor = connection.cursor(dictionary=True)
-                # Verificar si el RUC ya existe
-                cursor.execute("SELECT RUC_CLIENTE FROM CLIENTE WHERE RUC_CLIENTE = %s", (ruc,))
-                ruc_existente = cursor.fetchone()
-                if ruc_existente:
-                    # Si el RUC ya existe, mostrar un mensaje de error y no insertar
-                    error_message = "No se pudo registrar un nuevo cliente porque el RUC ya está registrado."
-                    return render_template('nuevo_cliente.html', error=error_message)
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT RUC_CLIENTE FROM CLIENTE WHERE RUC_CLIENTE = %s", (ruc,))
+            ruc_existente = cursor.fetchone()
+            if ruc_existente:
+                # Si el RUC ya existe, enviar un mensaje para mostrar en SweetAlert
+                flash('El RUC ya está registrado. Por favor, ingresa un RUC diferente.', 'error')
+                return redirect(url_for('nuevo_cliente'))  # Redirige a la misma ruta para limpiar el formulario
 
-                # Insertar el nuevo cliente si el RUC no existe
-                cursor.execute("INSERT INTO CLIENTE (NOMBRE, RUC_CLIENTE) VALUES (%s, %s)", (nombre_completo, ruc))
-                connection.commit()
-                cursor.close()
-                connection.close()
-                return redirect(url_for('index'))
-            except Exception as e:
-                print("Error al insertar cliente en la base de datos:", e)
-                error_message = "Error al insertar cliente en la base de datos."
-                return render_template('nuevo_cliente.html', error=error_message)
+            cursor.execute("INSERT INTO CLIENTE (NOMBRE, RUC_CLIENTE) VALUES (%s, %s)", (nombre_completo, ruc))
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return redirect(url_for('index'))  # Redirige al índice si todo está correcto
         else:
-            error_message = "Error de conexión a la base de datos. Por favor, inténtalo de nuevo más tarde."
-            return render_template('nuevo_cliente.html', error=error_message)
-    return render_template('nuevo_cliente.html', error=error_message)
+            flash('Error de conexión a la base de datos. Por favor, inténtalo de nuevo más tarde.', 'error')
+            return redirect(url_for('nuevo_cliente'))
 
+    return render_template('nuevo_cliente.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
