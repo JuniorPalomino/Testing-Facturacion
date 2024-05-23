@@ -195,8 +195,8 @@ def nuevo_comprobante():
         except Exception as e:
             if connection:
                 connection.rollback()
-            print("Error al procesar el formulario:", e)
-            return render_template('nuevo_comprobante.html', mensaje_error="Error al procesar el formulario: " + str(e))
+            error_message = f"Error al procesar el formulario, falta o incorrect ingreso de datos "
+            return redirect(url_for('nuevo_comprobante', error_message=error_message))
         finally:
             if cursor:
                 cursor.close()

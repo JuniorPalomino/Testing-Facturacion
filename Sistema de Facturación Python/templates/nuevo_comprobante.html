@@ -134,6 +134,12 @@
                 </div>
             </div>
         </form>
+
+        {% if request.args.get('error_message') %}
+        <script>
+            alert("{{ request.args.get('error_message') }}");
+        </script>
+         {% endif %}
     </div>
     
 
