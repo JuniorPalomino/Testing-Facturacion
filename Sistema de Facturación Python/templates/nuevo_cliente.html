@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nuevo Cliente</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+</head>
+<body data-error="{{ error }}">
+<div class="container mt-4">
+    <h1>Crear Cliente</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="mb-3">
+        <a href="/logout" class="btn btn-danger mb-3">
+            <i class="material-icons">exit_to_app</i>Cerrar Sesión</a>
+        <a href="/nuevo_comprobante" class="btn btn-primary mb-3">
+            <i class="material-icons">library_add</i>Crear Comprobante</a>
+        <a href="/index" class="btn btn-primary mb-3">
+            <i class="material-icons">home</i>Inicio</a>
+    </div>
+    <form action="{{ url_for('nuevo_cliente') }}" method="post">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">
+                        <i class="material-icons">badge</i>Nombres</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="apellidos" class="form-label">
+                        <i class="material-icons">badge</i>Apellidos</label>
+                    <input type="text" class="form-control" id="apellidos" name="apellidos" required>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="ruc" class="form-label">
+                <i class="material-icons">assignment_ind</i>RUC</label>
+            <input type="text" class="form-control" id="ruc" name="ruc" required>
+            <div id="ruc-error" class="text-danger"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="material-icons">person_add</i>Guardar</button>
+    </form>
+</div>
+
+<script>
+    // Función para validar el RUC en tiempo real
+    function validarRUC(input) {
+        var ruc = input.value;
+        // Remover caracteres que no son dígitos
+        ruc = ruc.replace(/\D/g, '');
+        // Limitar a 10 caracteres
+        ruc = ruc.slice(0, 10);
+        // Asignar el valor limpio de nuevo al campo
+        input.value = ruc;
+        
+        // Verificar si la longitud del RUC es menor a 10
+        if (ruc.length < 10) {
+            // Mostrar un mensaje de error
+            document.getElementById('ruc-error').textContent = 'El RUC debe tener exactamente 10 caracteres.';
+            // Desactivar el botón de guardar
+            document.querySelector('button[type="submit"]').disabled = true;
+        } else {
+            // Limpiar el mensaje de error
+            document.getElementById('ruc-error').textContent = '';
+            // Activar el botón de guardar
+            document.querySelector('button[type="submit"]').disabled = false;
+        }
+    }
+
+    
+   // Función para validar la longitud máxima del campo en tiempo real
+   function validarLongitud(input, maxLength, errorMessageId) {
+        var value = input.value;
+        // Limitar la longitud máxima
+        if (value.length > maxLength) {
+            // Cortar el valor si excede el límite
+            input.value = value.slice(0, maxLength);
+            // Mostrar el mensaje de error
+            document.getElementById(errorMessageId).textContent = 'Máximo ' + maxLength + ' caracteres permitidos.';
+        } else {
+            // Limpiar el mensaje de error
+            document.getElementById(errorMessageId).textContent = '';
+        }
+    }
+
+    // Función para validar que solo se ingresen letras y un espacio entre palabras
+    function soloLetras(input) {
+        // Limite máximo de caracteres
+        var maxLength = 40;
+        // Reemplazar caracteres no permitidos
+        input.value = input.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑ\s]+/g, '').replace(/\s+/g, ' ');
+        // Verificar si la longitud supera el límite máximo
+        validarLongitud(input, maxLength, input.id + '-error');
+    }
+
+    // Obtener el campo de entrada de nombre
+    var nombreInput = document.getElementById('nombre');
+    // Establecer el máximo de caracteres permitidos
+    var maxLengthNombre = 40;
+
+    // Agregar un listener para el evento de entrada en el campo de nombre
+    nombreInput.addEventListener('input', function() {
+        soloLetras(this);
+    });
+
+    // Obtener el campo de entrada de apellidos
+    var apellidosInput = document.getElementById('apellidos');
+    // Establecer el máximo de caracteres permitidos
+    var maxLengthApellidos = 40;
+
+    // Agregar un listener para el evento de entrada en el campo de apellidos
+    apellidosInput.addEventListener('input', function() {
+        soloLetras(this);
+    });
+    // Obtener el campo de entrada del RUC
+    var rucInput = document.getElementById('ruc');
+
+    // Agregar un listener para el evento de entrada en el campo RUC
+    rucInput.addEventListener('input', function() {
+        validarRUC(this);
+    });
+
+    // Función para mostrar el mensaje de error con SweetAlert
+    function mostrarError(message) {
+        swal({
+            title: "Error",
+            text: message,
+            icon: "error",
+        });
+    }
+
+    // Verificar si hay un mensaje de error
+    window.onload = function() {
+        const errorInput = document.querySelector('input[name="error"]');
+        if (errorInput) {
+            const errorMessage = errorInput.value;
+            if (errorMessage) {
+                mostrarError(errorMessage);
+            }
+        }
+    };
+  
+</script>
+
+</body>
+</html>
