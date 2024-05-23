@@ -28,7 +28,7 @@
                 <div class="mb-3">
                     <label for="nombre" class="form-label">
                         <i class="material-icons">badge</i>Nombres</label>
-                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                    <input type="text" class="form-control" id="nombre" name="nombre" placeholder="Ingrese sus nombres, solo caracteres" required>
                 </div>
             </div>
 
@@ -36,14 +36,14 @@
                 <div class="mb-3">
                     <label for="apellidos" class="form-label">
                         <i class="material-icons">badge</i>Apellidos</label>
-                    <input type="text" class="form-control" id="apellidos" name="apellidos" required>
+                    <input type="text" class="form-control" id="apellidos" name="apellidos" placeholder="Ingrese sus apellidos, solo caracteres" required>
                 </div>
             </div>
         </div>
         <div class="mb-3">
             <label for="ruc" class="form-label">
                 <i class="material-icons">assignment_ind</i>RUC</label>
-            <input type="text" class="form-control" id="ruc" name="ruc" required>
+            <input type="text" class="form-control" id="ruc" name="ruc" placeholder="Ingrese su RUC, solo números" required>
             <div id="ruc-error" class="text-danger"></div>
         </div>
 
@@ -55,16 +55,16 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    swal({
-                        title: "{{ category }}",
-                        text: "{{ message }}",
-                        icon: "{{ category }}",
-                        button: "OK",
-                    });
-                {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        swal({
+                            title: "{{ category }}",
+                            text: "{{ message }}",
+                            icon: "{{ category }}",
+                            button: "OK",
+                        });
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
         });
     // Función para validar el RUC en tiempo real

@@ -195,7 +195,7 @@ def nuevo_comprobante():
         except Exception as e:
             if connection:
                 connection.rollback()
-            error_message = f"Error al procesar el formulario, falta o incorrect ingreso de datos "
+            error_message = f"Error al procesar el formulario, falta o incorrecto ingreso de datos "
             return redirect(url_for('nuevo_comprobante', error_message=error_message))
         finally:
             if cursor:

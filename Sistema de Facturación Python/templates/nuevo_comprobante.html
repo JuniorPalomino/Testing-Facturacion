@@ -68,14 +68,14 @@
             <a href="/index" class="btn btn-primary mb-3">
                 <i class="material-icons">home</i>Inicio</a>
         </div>
-        <form action="{{ url_for('nuevo_comprobante') }}" method="post">
+        <form id="comprobanteForm" action="{{ url_for('nuevo_comprobante') }}" method="post">
             <div class="mb-3">
                 <label for="cliente" class="form-label">
                     <i class="material-icons">person</i>Cliente
                 </label>
                 <!-- Parte del código para seleccionar clientes -->
-                <select class="form-select" id="cliente" name="cliente" onchange="updateRUC(this.value)">
-                    <option selected>Seleccione un Cliente</option>
+                <select class="form-select" id="cliente" name="cliente" onchange="updateRUC(this.value); validarFormulario();">
+                    <option value="" selected>Seleccione un Cliente</option>
                     {% for cliente in clientes %}
                     <option value="{{ cliente.id }}">{{ cliente.NOMBRE }}</option>
                     {% endfor %}
@@ -126,7 +126,7 @@
                     </tbody>
                 </table>
             </div>
-            <button type="submit" class="btn btn-primary" onclick="enviarFormulario()"><i class="material-icons">save</i>Guardar</button>
+            <button type="submit" class="btn btn-primary" id="guardarBtn" disabled onclick="enviarFormulario(event)"><i class="material-icons">save</i>Guardar</button>
             <div id="myModal" class="modal">
                 <div class="modal-content">
                     <span class="close">&times;</span>
@@ -142,8 +142,6 @@
          {% endif %}
     </div>
     
-
-
 <script>
 
 // Obtener el modal
@@ -173,6 +171,7 @@ function mostrarError(mensaje) {
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('fecha_emision').value = today;
+    validarFormulario();
 });
 
 let itemIndex = 0;
@@ -206,8 +205,8 @@ function agregarItem() {
     newItem.classList.add('input-group');
 
     newItem.innerHTML = `
-        <input type="number" name="items[${itemIndex}][cantidad]" class="form-control" placeholder="Cantidad" min="1" onchange="calculateTotal(${itemIndex}); verificarDuplicados();" oninput="validarCantidad(this);" required>
-        <select name="items[${itemIndex}][descripcion]" class="form-control" onchange="updateProductDetails(this, ${itemIndex}); verificarDuplicados();" required>
+        <input type="number" name="items[${itemIndex}][cantidad]" class="form-control" placeholder="Cantidad" min="1" onchange="calculateTotal(${itemIndex}); verificarDuplicados(); validarFormulario();" oninput="validarCantidad(this);" required>
+        <select name="items[${itemIndex}][descripcion]" class="form-control" onchange="updateProductDetails(this, ${itemIndex}); verificarDuplicados(); validarFormulario();" required>
             <option value="">Seleccione una descripción</option>
             {% for producto in productos %}
                 <option data-product-id="{{ producto.id }}" value="{{ producto.descripcion }}">{{ producto.descripcion }}</option>
@@ -216,7 +215,7 @@ function agregarItem() {
         <input type="hidden" name="items[${itemIndex}][codigo_item]" class="form-control" required>
         <input type="text" name="items[${itemIndex}][precio_unitario]" class="form-control" placeholder="P. Unit." readonly>
         <input type="text" name="items[${itemIndex}][total]" class="form-control" placeholder="Total" readonly>
-        <button class="btn btn-danger" type="button" onclick="removeItem(this); verificarDuplicados(); updateTotals();">Eliminar</button>
+        <button class="btn btn-danger" type="button" onclick="removeItem(this); verificarDuplicados(); updateTotals(); validarFormulario();">Eliminar</button>
     `;
     itemsContainer.appendChild(newItem);
     itemIndex++;
@@ -224,7 +223,9 @@ function agregarItem() {
     // Verificar duplicados y actualizar totales después de agregar el nuevo ítem
     verificarDuplicados();
     updateTotals();
+    validarFormulario();
 }
+
 function validateInvoice(totalAfecto) {
     const botonGuardar = document.querySelector('button[type="submit"]');
     let error = false;
@@ -244,6 +245,7 @@ function validateInvoice(totalAfecto) {
         modal.style.display = "none"; // Oculta el modal solo si no hay errores ni duplicados
     }
 }
+
 function verificarDuplicados() {
     const items = document.querySelectorAll('select[name*="[descripcion]"]');
     const descripciones = new Set();
@@ -262,12 +264,14 @@ function verificarDuplicados() {
     }
     return duplicado;
 }
+
 function validarCantidad(input) {
     if (input.value < 1) {
         input.value = 1;
     }
     calculateTotal(parseInt(input.name.match(/\d+/)[0]));
 }
+
 // Función para obtener todos los datos de los elementos dentro del contenedor "items"
 function obtenerDatosItems() {
     const itemsContainer = document.getElementById('items');
@@ -296,23 +300,30 @@ function obtenerDatosItems() {
     return datosItems;
 }
 
-
-// Función para manejar el envío del formulario
-function enviarFormulario() {
-    // Obtener los datos de los elementos dentro del contenedor "items"
-    const datosItems = obtenerDatosItems();
-
-    const formulario = document.querySelector('form');
-    const datosItemsInput = document.createElement('input');
-    datosItemsInput.type = 'hidden';
-    datosItemsInput.name = 'datos_items';
-    datosItemsInput.value = JSON.stringify(datosItems);
-    formulario.appendChild(datosItemsInput);
-
-    // Ahora puedes enviar el formulario
-    formulario.submit();
+function validarFormulario() {
+    const clienteSeleccionado = document.getElementById('cliente').value !== "";
+    const hayItems = document.getElementById('items').querySelectorAll('.input-group').length > 0;
+    document.querySelector('button[type="submit"]').disabled = !(clienteSeleccionado && hayItems);
 }
 
+// Función para manejar el envío del formulario
+function enviarFormulario(event) {
+    event.preventDefault(); // Evitar el envío del formulario hasta que se realicen las validaciones
+    
+    if (!document.querySelector('button[type="submit"]').disabled) {
+        const datosItems = obtenerDatosItems();
+        const formulario = document.querySelector('form');
+        const datosItemsInput = document.createElement('input');
+        datosItemsInput.type = 'hidden';
+        datosItemsInput.name = 'datos_items';
+        datosItemsInput.value = JSON.stringify(datosItems);
+        formulario.appendChild(datosItemsInput);
+        
+        formulario.submit();
+    } else {
+        mostrarError("Debe seleccionar un cliente y agregar al menos un artículo.");
+    }
+}
 
 function updateProductDetails(select, index) {
     const productId = select.options[select.selectedIndex].getAttribute('data-product-id');
@@ -324,6 +335,7 @@ function updateProductDetails(select, index) {
 function removeItem(button) {
     button.parentElement.remove();
     updateTotals();
+    validarFormulario();
 }
 
 function calculateTotal(index) {
@@ -354,6 +366,7 @@ function updateTotals() {
     // Llamada a validar la factura después de actualizar los totales
     validateInvoice(totalAfecto);
 }
+
 function updateRUC(clienteId) {
     // Actualizar el RUC basado en la selección del cliente
     document.getElementById('ruc').value = clienteId; // Simulación, reemplazar con datos reales
