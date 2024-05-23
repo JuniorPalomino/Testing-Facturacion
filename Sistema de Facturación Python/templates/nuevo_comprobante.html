@@ -59,7 +59,15 @@
     </head>
     <body>
     <div class="container mt-4">    
-        <h1>Nuevo Comprobante</h1>
+        <h1>Crear Comprobante</h1>
+        <div class="mb-3">
+            <a href="/logout" class="btn btn-danger mb-3">
+                <i class="material-icons">exit_to_app</i>Cerrar Sesión</a>
+            <a href="/nuevo_cliente" class="btn btn-primary mb-3">
+                <i class="material-icons">person_add</i>Crear Cliente</a>
+            <a href="/index" class="btn btn-primary mb-3">
+                <i class="material-icons">home</i>Inicio</a>
+        </div>
         <form action="{{ url_for('nuevo_comprobante') }}" method="post">
             <div class="mb-3">
                 <label for="cliente" class="form-label">
@@ -89,8 +97,9 @@
             <div class="mb-3">
                 <label for="fecha_emision" class="form-label">
                     <i class="material-icons">event</i>Fecha de Emisión</label>
-                <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" required>
+                <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" readonly>
             </div>
+            
             <div id="items">
                 <!-- Items will be added here -->
             </div>
@@ -156,23 +165,8 @@ function mostrarError(mensaje) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0'); // Enero es 0!
-    var yyyy = today.getFullYear();
-
-    today = yyyy + '-' + mm + '-' + dd;
-    var minDate = new Date(today);
-    minDate.setDate(minDate.getDate() - 7);
-    var maxDate = new Date(today);
-    maxDate.setDate(maxDate.getDate() + 7);
-
-    var minDateString = minDate.toISOString().split('T')[0];
-    var maxDateString = maxDate.toISOString().split('T')[0];
-
-    var inputFechaEmision = document.getElementById('fecha_emision');
-    inputFechaEmision.setAttribute('min', minDateString);
-    inputFechaEmision.setAttribute('max', maxDateString);
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha_emision').value = today;
 });
 
 let itemIndex = 0;
@@ -192,7 +186,16 @@ function fetchProductDetails(productId, index) {
 }
 
 function agregarItem() {
+    const maxItems = 10; // Definir el máximo de ítems permitidos
     const itemsContainer = document.getElementById('items');
+    const itemCount = itemsContainer.querySelectorAll('.input-group').length;
+
+    // Verificar si ya se alcanzó el máximo de ítems
+    if (itemCount >= maxItems) {
+        alert('Se ha alcanzado el límite máximo de ítems (10).');
+        return;
+    }
+
     const newItem = document.createElement('div');
     newItem.classList.add('input-group');
 
@@ -207,10 +210,33 @@ function agregarItem() {
         <input type="hidden" name="items[${itemIndex}][codigo_item]" class="form-control" required>
         <input type="text" name="items[${itemIndex}][precio_unitario]" class="form-control" placeholder="P. Unit." readonly>
         <input type="text" name="items[${itemIndex}][total]" class="form-control" placeholder="Total" readonly>
-        <button class="btn btn-danger" type="button" onclick="removeItem(this); verificarDuplicados();">Eliminar</button>
+        <button class="btn btn-danger" type="button" onclick="removeItem(this); verificarDuplicados(); updateTotals();">Eliminar</button>
     `;
     itemsContainer.appendChild(newItem);
     itemIndex++;
+
+    // Verificar duplicados y actualizar totales después de agregar el nuevo ítem
+    verificarDuplicados();
+    updateTotals();
+}
+function validateInvoice(totalAfecto) {
+    const botonGuardar = document.querySelector('button[type="submit"]');
+    let error = false;
+    let errorMessage = '';
+
+    if (totalAfecto > 10000) {
+        error = true;
+        errorMessage = 'El total de la factura excede los 10,000 soles. Se recomienda dividir la factura en múltiples partes.';
+    }
+
+    const hasDuplicates = verificarDuplicados();
+
+    botonGuardar.disabled = error || hasDuplicates;
+    if (error) {
+        mostrarError(errorMessage);
+    } else if (!hasDuplicates) {
+        modal.style.display = "none"; // Oculta el modal solo si no hay errores ni duplicados
+    }
 }
 function verificarDuplicados() {
     const items = document.querySelectorAll('select[name*="[descripcion]"]');
@@ -220,16 +246,15 @@ function verificarDuplicados() {
     items.forEach(item => {
         if (descripciones.has(item.value)) {
             duplicado = true;
+        } else {
+            descripciones.add(item.value);
         }
-        descripciones.add(item.value);
     });
 
-    document.querySelector('button[type="submit"]').disabled = duplicado;
     if (duplicado) {
         mostrarError('Existen artículos duplicados. Por favor, elimine o cambie los artículos duplicados para continuar.');
-    } else {
-        modal.style.display = "none"; 
     }
+    return duplicado;
 }
 function validarCantidad(input) {
     if (input.value < 1) {
@@ -308,8 +333,9 @@ function updateTotals() {
     document.querySelectorAll(`input[name*='[total]']`).forEach(input => {
         totalAfecto += parseFloat(input.value);
     });
-    const igv = totalAfecto * 18/118;
+    const igv = totalAfecto * 18 / 118;
     const totalGeneral = totalAfecto - igv;
+
     document.getElementById('totalAfecto').textContent = totalGeneral.toFixed(2);
     document.getElementById('totalIGV').textContent = igv.toFixed(2);
     document.getElementById('totalGeneral').textContent = totalAfecto.toFixed(2);
@@ -318,8 +344,10 @@ function updateTotals() {
     document.getElementById('totalAfectoInput').value = totalGeneral.toFixed(2);
     document.getElementById('totalIGVInput').value = igv.toFixed(2);
     document.getElementById('totalGeneralInput').value = totalAfecto.toFixed(2);
-}
 
+    // Llamada a validar la factura después de actualizar los totales
+    validateInvoice(totalAfecto);
+}
 function updateRUC(clienteId) {
     // Actualizar el RUC basado en la selección del cliente
     document.getElementById('ruc').value = clienteId; // Simulación, reemplazar con datos reales

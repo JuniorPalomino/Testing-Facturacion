@@ -354,7 +354,7 @@ def factura_pdf(num_factura):
 @app.route('/nuevo_cliente', methods=['GET', 'POST'])
 @login_required
 def nuevo_cliente():
-    error_message = None  # Definir la variable error_message
+    error_message = None
     if request.method == 'POST':
         nombre = request.form['nombre']
         apellidos = request.form['apellidos']
@@ -365,20 +365,29 @@ def nuevo_cliente():
         if connection is not None:
             try:
                 cursor = connection.cursor(dictionary=True)
+                # Verificar si el RUC ya existe
+                cursor.execute("SELECT RUC_CLIENTE FROM CLIENTE WHERE RUC_CLIENTE = %s", (ruc,))
+                ruc_existente = cursor.fetchone()
+                if ruc_existente:
+                    # Si el RUC ya existe, mostrar un mensaje de error y no insertar
+                    error_message = "No se pudo registrar un nuevo cliente porque el RUC ya está registrado."
+                    return render_template('nuevo_cliente.html', error=error_message)
+
+                # Insertar el nuevo cliente si el RUC no existe
                 cursor.execute("INSERT INTO CLIENTE (NOMBRE, RUC_CLIENTE) VALUES (%s, %s)", (nombre_completo, ruc))
                 connection.commit()
                 cursor.close()
                 connection.close()
-                return redirect(url_for('index'))  # Redirecciona a la página principal
+                return redirect(url_for('index'))
             except Exception as e:
                 print("Error al insertar cliente en la base de datos:", e)
-                error_message = "Parece que estas poniendo datos repetidos. Por favor, intentalo de nuevo. Retrocede de Pestania"
-                return jsonify({'error': error_message}), 500  # Retorna un mensaje JSON con el error
+                error_message = "Error al insertar cliente en la base de datos."
+                return render_template('nuevo_cliente.html', error=error_message)
         else:
             error_message = "Error de conexión a la base de datos. Por favor, inténtalo de nuevo más tarde."
-            return jsonify({'error': error_message}), 500  # Retorna un mensaje JSON con el error
-    
+            return render_template('nuevo_cliente.html', error=error_message)
     return render_template('nuevo_cliente.html', error=error_message)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
